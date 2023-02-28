@@ -1,3 +1,6 @@
+test
+foo
+
 # KubeRay
 
 [![Build Status](https://github.com/ray-project/kuberay/workflows/Go-build-and-test/badge.svg)](https://github.com/ray-project/kuberay/actions)
