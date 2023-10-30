@@ -67,7 +67,7 @@ kind load docker-image kuberay/operator:nightly
 # Step 6: Install KubeRay operator with the custom image via local Helm chart
 # (Path: helm-chart/kuberay-operator)
 # Command: helm install kuberay-operator --set image.repository={IMG_REPO} --set image.tag={IMG_TAG} .
-helm install kuberay-operator --set image.repository=kuberay/operator --set image.tag=nightly .
+helm install kuberay-operator --set image.repository=kuberay/operator --set image.tag=nightly --namespace ray-system --create-namespace .
 
 # Step 7: Check the log of KubeRay operator
 kubectl logs {YOUR_OPERATOR_POD} | grep "Hello KubeRay"
