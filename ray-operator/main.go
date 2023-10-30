@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-logr/zapr"
 	routev1 "github.com/openshift/api/route/v1"
+
 	"github.com/ray-project/kuberay/ray-operator/controllers/ray"
 	"github.com/ray-project/kuberay/ray-operator/controllers/ray/batchscheduler"
 	"github.com/ray-project/kuberay/ray-operator/controllers/ray/common"
@@ -167,6 +168,12 @@ func main() {
 	exitOnError(ray.NewRayJobReconciler(mgr).SetupWithManager(mgr),
 		"unable to create controller", "controller", "RayJob")
 
+	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+		if err = (&rayv1.RayCluster{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "RayCluster")
+			os.Exit(1)
+		}
+	}
 	// +kubebuilder:scaffold:builder
 
 	exitOnError(mgr.AddHealthzCheck("healthz", healthz.Ping), "unable to set up health check")
