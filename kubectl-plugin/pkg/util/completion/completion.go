@@ -57,6 +57,18 @@ func RayClusterResourceNameCompletionFunc(f cmdutil.Factory) func(*cobra.Command
 	}
 }
 
+// RayWorkerGroupCompletionFunc Returns a completion function that completes Ray worker group names.
+func RayWorkerGroupCompletionFunc(f cmdutil.Factory) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		var comps []string
+		directive := cobra.ShellCompDirectiveNoFileComp
+		if len(args) == 0 {
+			comps, directive = doRayWorkerGroupCompletion(f, toComplete)
+		}
+		return comps, directive
+	}
+}
+
 func getAllRayResourceType() []string {
 	return []string{
 		string(util.RayCluster),
@@ -101,4 +113,22 @@ func doRayClusterCompletion(f cmdutil.Factory, toComplete string) ([]string, cob
 		}
 	}
 	return comps, directive
+}
+
+// doRayWorkerGroupCompletion returns completions of Ray worker group names that match the toComplete prefix
+func doRayWorkerGroupCompletion(f cmdutil.Factory, toComplete string) ([]string, cobra.ShellCompDirective) {
+	var comps []string
+	directive := cobra.ShellCompDirectiveNoFileComp
+	comps = CompGetWorkerGroups(f, string(util.RayCluster), toComplete)
+	return comps, directive
+}
+
+// CompGetWorkerGroups gets the list of worker groups of the specified RayCluster which begin with `toComplete`.
+func CompGetWorkerGroups(f cmdutil.Factory, rayClusterName string, toComplete string) []string {
+	template := "{{ range .items  }}{{ range .spec.workerGroupSpecs }}{{ .groupName }}{{ end }}{{ end }}"
+	args := []string{string(util.RayCluster)}
+	if rayClusterName != "" {
+		args = append(args, rayClusterName)
+	}
+	return completion.CompGetFromTemplate(&template, f, "", args, toComplete)
 }
