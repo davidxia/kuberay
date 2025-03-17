@@ -33,7 +33,7 @@ var instance = rayv1.RayCluster{
 	},
 	Spec: rayv1.RayClusterSpec{
 		HeadGroupSpec: rayv1.HeadGroupSpec{
-			RayStartParams: map[string]string{},
+			RayStartParams: &map[string]string{},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "default",
@@ -70,7 +70,7 @@ var instance = rayv1.RayCluster{
 				MinReplicas: ptr.To[int32](0),
 				MaxReplicas: ptr.To[int32](10000),
 				GroupName:   "small-group",
-				RayStartParams: map[string]string{
+				RayStartParams: &map[string]string{
 					"port": "6379",
 				},
 				Template: corev1.PodTemplateSpec{
@@ -257,14 +257,14 @@ func TestAddEmptyDirVolumes(t *testing.T) {
 
 func TestGetHeadPort(t *testing.T) {
 	headStartParams := make(map[string]string)
-	actualResult := GetHeadPort(headStartParams)
+	actualResult := GetHeadPort(&headStartParams)
 	expectedResult := "6379"
 	if !(actualResult == expectedResult) {
 		t.Fatalf("Expected `%v` but got `%v`", expectedResult, actualResult)
 	}
 
 	headStartParams["port"] = "9999"
-	actualResult = GetHeadPort(headStartParams)
+	actualResult = GetHeadPort(&headStartParams)
 	expectedResult = "9999"
 	if actualResult != expectedResult {
 		t.Fatalf("Expected `%v` but got `%v`", expectedResult, actualResult)
@@ -404,7 +404,7 @@ func TestConfigureGCSFaultToleranceWithAnnotations(t *testing.T) {
 				},
 				Spec: rayv1.RayClusterSpec{
 					HeadGroupSpec: rayv1.HeadGroupSpec{
-						RayStartParams: map[string]string{},
+						RayStartParams: &map[string]string{},
 						Template: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
@@ -451,10 +451,10 @@ func TestConfigureGCSFaultToleranceWithAnnotations(t *testing.T) {
 				})
 			}
 			if test.redisUsernameRayStartParams != "" {
-				cluster.Spec.HeadGroupSpec.RayStartParams["redis-username"] = test.redisUsernameRayStartParams
+				(*cluster.Spec.HeadGroupSpec.RayStartParams)["redis-username"] = test.redisUsernameRayStartParams
 			}
 			if test.redisPasswordRayStartParams != "" {
-				cluster.Spec.HeadGroupSpec.RayStartParams["redis-password"] = test.redisPasswordRayStartParams
+				(*cluster.Spec.HeadGroupSpec.RayStartParams)["redis-password"] = test.redisPasswordRayStartParams
 			}
 			podTemplate := &cluster.Spec.HeadGroupSpec.Template
 			if !test.isHeadPod {
@@ -600,7 +600,7 @@ func TestConfigureGCSFaultToleranceWithGcsFTOptions(t *testing.T) {
 				Spec: rayv1.RayClusterSpec{
 					GcsFaultToleranceOptions: test.gcsFTOptions,
 					HeadGroupSpec: rayv1.HeadGroupSpec{
-						RayStartParams: map[string]string{},
+						RayStartParams: &map[string]string{},
 						Template:       *emptyPodTemplate.DeepCopy(),
 					},
 					WorkerGroupSpecs: []rayv1.WorkerGroupSpec{
@@ -657,7 +657,7 @@ func TestBuildPod(t *testing.T) {
 	// Test head pod
 	podName := strings.ToLower(cluster.Name + utils.DashSymbol + string(rayv1.HeadNode) + utils.DashSymbol + utils.FormatInt32(0))
 	podTemplateSpec := DefaultHeadPodTemplate(ctx, *cluster, cluster.Spec.HeadGroupSpec, podName, "6379")
-	pod := BuildPod(ctx, podTemplateSpec, rayv1.HeadNode, cluster.Spec.HeadGroupSpec.RayStartParams, "6379", false, utils.GetCRDType(""), "")
+	pod := BuildPod(ctx, podTemplateSpec, rayv1.HeadNode, *cluster.Spec.HeadGroupSpec.RayStartParams, "6379", false, utils.GetCRDType(""), "")
 
 	// Check environment variables
 	rayContainer := pod.Spec.Containers[utils.RayContainerIndex]
@@ -712,7 +712,7 @@ func TestBuildPod(t *testing.T) {
 	podName = cluster.Name + utils.DashSymbol + string(rayv1.WorkerNode) + utils.DashSymbol + worker.GroupName + utils.DashSymbol + utils.FormatInt32(0)
 	fqdnRayIP := utils.GenerateFQDNServiceName(ctx, *cluster, cluster.Namespace)
 	podTemplateSpec = DefaultWorkerPodTemplate(ctx, *cluster, worker, podName, fqdnRayIP, "6379")
-	pod = BuildPod(ctx, podTemplateSpec, rayv1.WorkerNode, worker.RayStartParams, "6379", false, utils.GetCRDType(""), fqdnRayIP)
+	pod = BuildPod(ctx, podTemplateSpec, rayv1.WorkerNode, *worker.RayStartParams, "6379", false, utils.GetCRDType(""), fqdnRayIP)
 
 	// Check resources
 	rayContainer = pod.Spec.Containers[utils.RayContainerIndex]
@@ -775,7 +775,7 @@ func TestBuildPod_WithNoCPULimits(t *testing.T) {
 	// Test head pod
 	podName := strings.ToLower(cluster.Name + utils.DashSymbol + string(rayv1.HeadNode) + utils.DashSymbol + utils.FormatInt32(0))
 	podTemplateSpec := DefaultHeadPodTemplate(ctx, *cluster, cluster.Spec.HeadGroupSpec, podName, "6379")
-	pod := BuildPod(ctx, podTemplateSpec, rayv1.HeadNode, cluster.Spec.HeadGroupSpec.RayStartParams, "6379", false, utils.GetCRDType(""), "")
+	pod := BuildPod(ctx, podTemplateSpec, rayv1.HeadNode, *cluster.Spec.HeadGroupSpec.RayStartParams, "6379", false, utils.GetCRDType(""), "")
 	expectedCommandArg := splitAndSort("ulimit -n 65536; ray start --head --block --dashboard-agent-listen-port=52365 --memory=1073741824 --num-cpus=2 --metrics-export-port=8080 --dashboard-host=0.0.0.0")
 	actualCommandArg := splitAndSort(pod.Spec.Containers[0].Args[0])
 	if !reflect.DeepEqual(expectedCommandArg, actualCommandArg) {
@@ -787,7 +787,7 @@ func TestBuildPod_WithNoCPULimits(t *testing.T) {
 	podName = cluster.Name + utils.DashSymbol + string(rayv1.WorkerNode) + utils.DashSymbol + worker.GroupName + utils.DashSymbol + utils.FormatInt32(0)
 	fqdnRayIP := utils.GenerateFQDNServiceName(ctx, *cluster, cluster.Namespace)
 	podTemplateSpec = DefaultWorkerPodTemplate(ctx, *cluster, worker, podName, fqdnRayIP, "6379")
-	pod = BuildPod(ctx, podTemplateSpec, rayv1.WorkerNode, worker.RayStartParams, "6379", false, utils.GetCRDType(""), fqdnRayIP)
+	pod = BuildPod(ctx, podTemplateSpec, rayv1.WorkerNode, *worker.RayStartParams, "6379", false, utils.GetCRDType(""), fqdnRayIP)
 	expectedCommandArg = splitAndSort("ulimit -n 65536; ray start --block --dashboard-agent-listen-port=52365 --memory=1073741824 --num-cpus=2 --num-gpus=3 --address=raycluster-sample-head-svc.default.svc.cluster.local:6379 --port=6379 --metrics-export-port=8080")
 	actualCommandArg = splitAndSort(pod.Spec.Containers[0].Args[0])
 	if !reflect.DeepEqual(expectedCommandArg, actualCommandArg) {
@@ -811,7 +811,7 @@ func TestBuildPod_WithOverwriteCommand(t *testing.T) {
 
 	podName := strings.ToLower(cluster.Name + utils.DashSymbol + string(rayv1.HeadNode) + utils.DashSymbol + utils.FormatInt32(0))
 	podTemplateSpec := DefaultHeadPodTemplate(ctx, *cluster, cluster.Spec.HeadGroupSpec, podName, "6379")
-	headPod := BuildPod(ctx, podTemplateSpec, rayv1.HeadNode, cluster.Spec.HeadGroupSpec.RayStartParams, "6379", false, utils.GetCRDType(""), "")
+	headPod := BuildPod(ctx, podTemplateSpec, rayv1.HeadNode, *cluster.Spec.HeadGroupSpec.RayStartParams, "6379", false, utils.GetCRDType(""), "")
 	headContainer := headPod.Spec.Containers[utils.RayContainerIndex]
 	assert.Equal(t, []string{"I am head"}, headContainer.Command)
 	assert.Equal(t, []string{"I am head again"}, headContainer.Args)
@@ -820,7 +820,7 @@ func TestBuildPod_WithOverwriteCommand(t *testing.T) {
 	podName = cluster.Name + utils.DashSymbol + string(rayv1.WorkerNode) + utils.DashSymbol + worker.GroupName + utils.DashSymbol + utils.FormatInt32(0)
 	fqdnRayIP := utils.GenerateFQDNServiceName(ctx, *cluster, cluster.Namespace)
 	podTemplateSpec = DefaultWorkerPodTemplate(ctx, *cluster, worker, podName, fqdnRayIP, "6379")
-	workerPod := BuildPod(ctx, podTemplateSpec, rayv1.WorkerNode, worker.RayStartParams, "6379", false, utils.GetCRDType(""), fqdnRayIP)
+	workerPod := BuildPod(ctx, podTemplateSpec, rayv1.WorkerNode, *worker.RayStartParams, "6379", false, utils.GetCRDType(""), fqdnRayIP)
 	workerContainer := workerPod.Spec.Containers[utils.RayContainerIndex]
 	assert.Equal(t, []string{"I am worker"}, workerContainer.Command)
 	assert.Equal(t, []string{"I am worker again"}, workerContainer.Args)
@@ -832,7 +832,7 @@ func TestBuildPod_WithAutoscalerEnabled(t *testing.T) {
 	cluster.Spec.EnableInTreeAutoscaling = &trueFlag
 	podName := strings.ToLower(cluster.Name + utils.DashSymbol + string(rayv1.HeadNode) + utils.DashSymbol + utils.FormatInt32(0))
 	podTemplateSpec := DefaultHeadPodTemplate(ctx, *cluster, cluster.Spec.HeadGroupSpec, podName, "6379")
-	pod := BuildPod(ctx, podTemplateSpec, rayv1.HeadNode, cluster.Spec.HeadGroupSpec.RayStartParams, "6379", true, utils.GetCRDType(""), "")
+	pod := BuildPod(ctx, podTemplateSpec, rayv1.HeadNode, *cluster.Spec.HeadGroupSpec.RayStartParams, "6379", true, utils.GetCRDType(""), "")
 
 	actualResult := pod.Labels[utils.RayClusterLabelKey]
 	expectedResult := cluster.Name
@@ -889,7 +889,7 @@ func TestBuildPod_WithCreatedByRayService(t *testing.T) {
 	cluster.Spec.EnableInTreeAutoscaling = &trueFlag
 	podName := strings.ToLower(cluster.Name + utils.DashSymbol + string(rayv1.HeadNode) + utils.DashSymbol + utils.FormatInt32(0))
 	podTemplateSpec := DefaultHeadPodTemplate(ctx, *cluster, cluster.Spec.HeadGroupSpec, podName, "6379")
-	pod := BuildPod(ctx, podTemplateSpec, rayv1.HeadNode, cluster.Spec.HeadGroupSpec.RayStartParams, "6379", true, utils.RayServiceCRD, "")
+	pod := BuildPod(ctx, podTemplateSpec, rayv1.HeadNode, *cluster.Spec.HeadGroupSpec.RayStartParams, "6379", true, utils.RayServiceCRD, "")
 
 	val, ok := pod.Labels[utils.RayClusterServingServiceLabelKey]
 	assert.True(t, ok, "Expected serve label is not present")
@@ -900,7 +900,7 @@ func TestBuildPod_WithCreatedByRayService(t *testing.T) {
 	podName = cluster.Name + utils.DashSymbol + string(rayv1.WorkerNode) + utils.DashSymbol + worker.GroupName + utils.DashSymbol + utils.FormatInt32(0)
 	fqdnRayIP := utils.GenerateFQDNServiceName(ctx, *cluster, cluster.Namespace)
 	podTemplateSpec = DefaultWorkerPodTemplate(ctx, *cluster, worker, podName, fqdnRayIP, "6379")
-	pod = BuildPod(ctx, podTemplateSpec, rayv1.WorkerNode, worker.RayStartParams, "6379", false, utils.RayServiceCRD, fqdnRayIP)
+	pod = BuildPod(ctx, podTemplateSpec, rayv1.WorkerNode, *worker.RayStartParams, "6379", false, utils.RayServiceCRD, fqdnRayIP)
 
 	val, ok = pod.Labels[utils.RayClusterServingServiceLabelKey]
 	assert.True(t, ok, "Expected serve label is not present")
@@ -972,7 +972,7 @@ func TestBuildPodWithAutoscalerOptions(t *testing.T) {
 		SecurityContext:    &customSecurityContext,
 	}
 	podTemplateSpec := DefaultHeadPodTemplate(ctx, *cluster, cluster.Spec.HeadGroupSpec, podName, "6379")
-	pod := BuildPod(ctx, podTemplateSpec, rayv1.HeadNode, cluster.Spec.HeadGroupSpec.RayStartParams, "6379", true, utils.GetCRDType(""), "")
+	pod := BuildPod(ctx, podTemplateSpec, rayv1.HeadNode, *cluster.Spec.HeadGroupSpec.RayStartParams, "6379", true, utils.GetCRDType(""), "")
 	expectedContainer := *autoscalerContainer.DeepCopy()
 	expectedContainer.Image = customAutoscalerImage
 	expectedContainer.ImagePullPolicy = customPullPolicy
@@ -1280,13 +1280,13 @@ func TestSetMissingRayStartParamsAddress(t *testing.T) {
 	testCases := []struct {
 		name           string
 		assertion      func(t *testing.T, rayStartParams map[string]string)
-		rayStartParams map[string]string
+		rayStartParams *map[string]string
 		fqdnRayIP      string
 		nodeType       rayv1.RayNodeType
 	}{
 		{
 			name:           "Head node with no address option set.",
-			rayStartParams: map[string]string{},
+			rayStartParams: &map[string]string{},
 			fqdnRayIP:      "",
 			nodeType:       rayv1.HeadNode,
 			assertion: func(t *testing.T, rayStartParams map[string]string) {
@@ -1295,7 +1295,7 @@ func TestSetMissingRayStartParamsAddress(t *testing.T) {
 		},
 		{
 			name:           "Head node with custom address option set.",
-			rayStartParams: map[string]string{"address": customAddress},
+			rayStartParams: &map[string]string{"address": customAddress},
 			fqdnRayIP:      "",
 			nodeType:       rayv1.HeadNode,
 			assertion: func(t *testing.T, rayStartParams map[string]string) {
@@ -1304,7 +1304,7 @@ func TestSetMissingRayStartParamsAddress(t *testing.T) {
 		},
 		{
 			name:           "Worker node with no address option set.",
-			rayStartParams: map[string]string{},
+			rayStartParams: &map[string]string{},
 			fqdnRayIP:      fqdnRayIP,
 			nodeType:       rayv1.WorkerNode,
 			assertion: func(t *testing.T, rayStartParams map[string]string) {
@@ -1314,7 +1314,7 @@ func TestSetMissingRayStartParamsAddress(t *testing.T) {
 		},
 		{
 			name:           "Worker node with custom address option set.",
-			rayStartParams: map[string]string{"address": customAddress},
+			rayStartParams: &map[string]string{"address": customAddress},
 			fqdnRayIP:      fqdnRayIP,
 			nodeType:       rayv1.WorkerNode,
 			assertion: func(t *testing.T, rayStartParams map[string]string) {
@@ -1324,8 +1324,8 @@ func TestSetMissingRayStartParamsAddress(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			testCase.rayStartParams = setMissingRayStartParams(ctx, testCase.rayStartParams, testCase.nodeType, headPort, testCase.fqdnRayIP)
-			testCase.assertion(t, testCase.rayStartParams)
+			testCase.rayStartParams = ptr.To(setMissingRayStartParams(ctx, *testCase.rayStartParams, testCase.nodeType, headPort, testCase.fqdnRayIP))
+			testCase.assertion(t, *testCase.rayStartParams)
 		})
 	}
 }
@@ -1343,13 +1343,13 @@ func TestSetMissingRayStartParamsMetricsExportPort(t *testing.T) {
 	testCases := []struct {
 		name           string
 		assertion      func(t *testing.T, rayStartParams map[string]string)
-		rayStartParams map[string]string
+		rayStartParams *map[string]string
 		fqdnRayIP      string
 		nodeType       rayv1.RayNodeType
 	}{
 		{
 			name:           "Head node with no metrics-export-port option set.",
-			rayStartParams: map[string]string{},
+			rayStartParams: &map[string]string{},
 			fqdnRayIP:      "",
 			nodeType:       rayv1.HeadNode,
 			assertion: func(t *testing.T, rayStartParams map[string]string) {
@@ -1358,7 +1358,7 @@ func TestSetMissingRayStartParamsMetricsExportPort(t *testing.T) {
 		},
 		{
 			name:           "Head node with custom metrics-export-port option set.",
-			rayStartParams: map[string]string{"metrics-export-port": fmt.Sprint(customMetricsPort)},
+			rayStartParams: &map[string]string{"metrics-export-port": fmt.Sprint(customMetricsPort)},
 			fqdnRayIP:      "",
 			nodeType:       rayv1.HeadNode,
 			assertion: func(t *testing.T, rayStartParams map[string]string) {
@@ -1367,7 +1367,7 @@ func TestSetMissingRayStartParamsMetricsExportPort(t *testing.T) {
 		},
 		{
 			name:           "Worker node with no metrics-export-port option set.",
-			rayStartParams: map[string]string{},
+			rayStartParams: &map[string]string{},
 			fqdnRayIP:      fqdnRayIP,
 			nodeType:       rayv1.WorkerNode,
 			assertion: func(t *testing.T, rayStartParams map[string]string) {
@@ -1376,7 +1376,7 @@ func TestSetMissingRayStartParamsMetricsExportPort(t *testing.T) {
 		},
 		{
 			name:           "Worker node with custom metrics-export-port option set.",
-			rayStartParams: map[string]string{"metrics-export-port": fmt.Sprint(customMetricsPort)},
+			rayStartParams: &map[string]string{"metrics-export-port": fmt.Sprint(customMetricsPort)},
 			fqdnRayIP:      fqdnRayIP,
 			nodeType:       rayv1.WorkerNode,
 			assertion: func(t *testing.T, rayStartParams map[string]string) {
@@ -1387,8 +1387,8 @@ func TestSetMissingRayStartParamsMetricsExportPort(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			testCase.rayStartParams = setMissingRayStartParams(ctx, testCase.rayStartParams, testCase.nodeType, headPort, testCase.fqdnRayIP)
-			testCase.assertion(t, testCase.rayStartParams)
+			testCase.rayStartParams = ptr.To(setMissingRayStartParams(ctx, *testCase.rayStartParams, testCase.nodeType, headPort, testCase.fqdnRayIP))
+			testCase.assertion(t, *testCase.rayStartParams)
 		})
 	}
 }
@@ -1405,13 +1405,13 @@ func TestSetMissingRayStartParamsBlock(t *testing.T) {
 	testCases := []struct {
 		name           string
 		assertion      func(t *testing.T, rayStartParams map[string]string)
-		rayStartParams map[string]string
+		rayStartParams *map[string]string
 		fqdnRayIP      string
 		nodeType       rayv1.RayNodeType
 	}{
 		{
 			name:           "Head node with no --block option set.",
-			rayStartParams: map[string]string{},
+			rayStartParams: &map[string]string{},
 			fqdnRayIP:      "",
 			nodeType:       rayv1.HeadNode,
 			assertion: func(t *testing.T, rayStartParams map[string]string) {
@@ -1420,7 +1420,7 @@ func TestSetMissingRayStartParamsBlock(t *testing.T) {
 		},
 		{
 			name:           "Head node with --block option set to false.",
-			rayStartParams: map[string]string{"block": "false"},
+			rayStartParams: &map[string]string{"block": "false"},
 			fqdnRayIP:      "",
 			nodeType:       rayv1.HeadNode,
 			assertion: func(t *testing.T, rayStartParams map[string]string) {
@@ -1429,7 +1429,7 @@ func TestSetMissingRayStartParamsBlock(t *testing.T) {
 		},
 		{
 			name:           "Worker node with no --block option set.",
-			rayStartParams: map[string]string{},
+			rayStartParams: &map[string]string{},
 			fqdnRayIP:      fqdnRayIP,
 			nodeType:       rayv1.WorkerNode,
 			assertion: func(t *testing.T, rayStartParams map[string]string) {
@@ -1438,7 +1438,7 @@ func TestSetMissingRayStartParamsBlock(t *testing.T) {
 		},
 		{
 			name:           "Worker node with --block option set to false.",
-			rayStartParams: map[string]string{"block": "false"},
+			rayStartParams: &map[string]string{"block": "false"},
 			fqdnRayIP:      fqdnRayIP,
 			nodeType:       rayv1.WorkerNode,
 			assertion: func(t *testing.T, rayStartParams map[string]string) {
@@ -1448,8 +1448,8 @@ func TestSetMissingRayStartParamsBlock(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			testCase.rayStartParams = setMissingRayStartParams(ctx, testCase.rayStartParams, testCase.nodeType, headPort, testCase.fqdnRayIP)
-			testCase.assertion(t, testCase.rayStartParams)
+			testCase.rayStartParams = ptr.To(setMissingRayStartParams(ctx, *testCase.rayStartParams, testCase.nodeType, headPort, testCase.fqdnRayIP))
+			testCase.assertion(t, *testCase.rayStartParams)
 		})
 	}
 }
@@ -1464,13 +1464,13 @@ func TestSetMissingRayStartParamsDashboardHost(t *testing.T) {
 	testCases := []struct {
 		name           string
 		assertion      func(t *testing.T, rayStartParams map[string]string)
-		rayStartParams map[string]string
+		rayStartParams *map[string]string
 		fqdnRayIP      string
 		nodeType       rayv1.RayNodeType
 	}{
 		{
 			name:           "Head node with no dashboard-host option set.",
-			rayStartParams: map[string]string{},
+			rayStartParams: &map[string]string{},
 			fqdnRayIP:      "",
 			nodeType:       rayv1.HeadNode,
 			assertion: func(t *testing.T, rayStartParams map[string]string) {
@@ -1479,7 +1479,7 @@ func TestSetMissingRayStartParamsDashboardHost(t *testing.T) {
 		},
 		{
 			name:           "Head node with dashboard-host option set.",
-			rayStartParams: map[string]string{"dashboard-host": "localhost"},
+			rayStartParams: &map[string]string{"dashboard-host": "localhost"},
 			fqdnRayIP:      "",
 			nodeType:       rayv1.HeadNode,
 			assertion: func(t *testing.T, rayStartParams map[string]string) {
@@ -1488,7 +1488,7 @@ func TestSetMissingRayStartParamsDashboardHost(t *testing.T) {
 		},
 		{
 			name:           "Worker node with no dashboard-host option set.",
-			rayStartParams: map[string]string{},
+			rayStartParams: &map[string]string{},
 			fqdnRayIP:      fqdnRayIP,
 			nodeType:       rayv1.WorkerNode,
 			assertion: func(t *testing.T, rayStartParams map[string]string) {
@@ -1497,7 +1497,7 @@ func TestSetMissingRayStartParamsDashboardHost(t *testing.T) {
 		},
 		{
 			name:           "Worker node with dashboard-host option set.",
-			rayStartParams: map[string]string{"dashboard-host": "localhost"},
+			rayStartParams: &map[string]string{"dashboard-host": "localhost"},
 			fqdnRayIP:      fqdnRayIP,
 			nodeType:       rayv1.WorkerNode,
 			assertion: func(t *testing.T, rayStartParams map[string]string) {
@@ -1508,8 +1508,8 @@ func TestSetMissingRayStartParamsDashboardHost(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			testCase.rayStartParams = setMissingRayStartParams(ctx, testCase.rayStartParams, testCase.nodeType, headPort, testCase.fqdnRayIP)
-			testCase.assertion(t, testCase.rayStartParams)
+			testCase.rayStartParams = ptr.To(setMissingRayStartParams(ctx, *testCase.rayStartParams, testCase.nodeType, headPort, testCase.fqdnRayIP))
+			testCase.assertion(t, *testCase.rayStartParams)
 		})
 	}
 }
@@ -1620,7 +1620,7 @@ func TestInitLivenessAndReadinessProbe(t *testing.T) {
 
 func TestGenerateRayStartCommand(t *testing.T) {
 	tests := []struct {
-		rayStartParams map[string]string
+		rayStartParams *map[string]string
 		name           string
 		expected       string
 		nodeType       rayv1.RayNodeType
@@ -1629,7 +1629,7 @@ func TestGenerateRayStartCommand(t *testing.T) {
 		{
 			name:           "WorkerNode with GPU",
 			nodeType:       rayv1.WorkerNode,
-			rayStartParams: map[string]string{},
+			rayStartParams: &map[string]string{},
 			resource: corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{
 					"nvidia.com/gpu": resource.MustParse("1"),
@@ -1640,7 +1640,7 @@ func TestGenerateRayStartCommand(t *testing.T) {
 		{
 			name:           "WorkerNode with TPU",
 			nodeType:       rayv1.WorkerNode,
-			rayStartParams: map[string]string{},
+			rayStartParams: &map[string]string{},
 			resource: corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{
 					"google.com/tpu": resource.MustParse("4"),
@@ -1651,7 +1651,7 @@ func TestGenerateRayStartCommand(t *testing.T) {
 		{
 			name:           "HeadNode with Neuron Cores",
 			nodeType:       rayv1.HeadNode,
-			rayStartParams: map[string]string{},
+			rayStartParams: &map[string]string{},
 			resource: corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{
 					"aws.amazon.com/neuroncore": resource.MustParse("4"),
@@ -1662,7 +1662,7 @@ func TestGenerateRayStartCommand(t *testing.T) {
 		{
 			name:           "HeadNode with multiple accelerators",
 			nodeType:       rayv1.HeadNode,
-			rayStartParams: map[string]string{},
+			rayStartParams: &map[string]string{},
 			resource: corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{
 					"aws.amazon.com/neuroncore": resource.MustParse("4"),
@@ -1674,7 +1674,7 @@ func TestGenerateRayStartCommand(t *testing.T) {
 		{
 			name:           "HeadNode with multiple custom accelerators",
 			nodeType:       rayv1.HeadNode,
-			rayStartParams: map[string]string{},
+			rayStartParams: &map[string]string{},
 			resource: corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{
 					"google.com/tpu":            resource.MustParse("8"),
@@ -1687,7 +1687,7 @@ func TestGenerateRayStartCommand(t *testing.T) {
 		{
 			name:     "HeadNode with existing resources",
 			nodeType: rayv1.HeadNode,
-			rayStartParams: map[string]string{
+			rayStartParams: &map[string]string{
 				"resources": `"{"custom_resource":2}"`,
 			},
 			resource: corev1.ResourceRequirements{
@@ -1700,7 +1700,7 @@ func TestGenerateRayStartCommand(t *testing.T) {
 		{
 			name:     "HeadNode with existing neuron_cores resources",
 			nodeType: rayv1.HeadNode,
-			rayStartParams: map[string]string{
+			rayStartParams: &map[string]string{
 				"resources": `'{"custom_resource":2,"neuron_cores":3}'`,
 			},
 			resource: corev1.ResourceRequirements{
@@ -1713,7 +1713,7 @@ func TestGenerateRayStartCommand(t *testing.T) {
 		{
 			name:     "HeadNode with existing TPU resources",
 			nodeType: rayv1.HeadNode,
-			rayStartParams: map[string]string{
+			rayStartParams: &map[string]string{
 				"resources": `'{"custom_resource":2,"TPU":4}'`,
 			},
 			resource: corev1.ResourceRequirements{
@@ -1726,7 +1726,7 @@ func TestGenerateRayStartCommand(t *testing.T) {
 		{
 			name:     "HeadNode with invalid resources string",
 			nodeType: rayv1.HeadNode,
-			rayStartParams: map[string]string{
+			rayStartParams: &map[string]string{
 				"resources": "{",
 			},
 			resource: corev1.ResourceRequirements{
@@ -1739,7 +1739,7 @@ func TestGenerateRayStartCommand(t *testing.T) {
 		{
 			name:           "Invalid node type",
 			nodeType:       "InvalidType",
-			rayStartParams: map[string]string{},
+			rayStartParams: &map[string]string{},
 			resource:       corev1.ResourceRequirements{},
 			expected:       "",
 		},
@@ -1747,7 +1747,7 @@ func TestGenerateRayStartCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := generateRayStartCommand(context.TODO(), tt.nodeType, tt.rayStartParams, tt.resource)
+			result := generateRayStartCommand(context.TODO(), tt.nodeType, *tt.rayStartParams, tt.resource)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

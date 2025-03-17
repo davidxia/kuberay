@@ -24,11 +24,11 @@ func TestCreateWorkerGroupSpec(t *testing.T) {
 		workerCPU:         "2",
 		workerMemory:      "5Gi",
 		workerGPU:         "1",
-		rayStartParams:    rayStartParams,
+		rayStartParams:    &rayStartParams,
 	}
 
 	expected := rayv1.WorkerGroupSpec{
-		RayStartParams: rayStartParams,
+		RayStartParams: &rayStartParams,
 		GroupName:      "example-group",
 		Template: corev1.PodTemplateSpec{
 			Spec: corev1.PodSpec{

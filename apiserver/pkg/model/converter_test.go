@@ -30,7 +30,7 @@ var (
 var headSpecTest = rayv1api.HeadGroupSpec{
 	ServiceType:   "ClusterIP",
 	EnableIngress: &enableIngress,
-	RayStartParams: map[string]string{
+	RayStartParams: &map[string]string{
 		"dashboard-host":      "0.0.0.0",
 		"metrics-export-port": "8080",
 		"num-cpus":            "0",
@@ -162,7 +162,7 @@ var workerSpecTest = rayv1api.WorkerGroupSpec{
 	Replicas:    &workerReplicas,
 	MinReplicas: &workerMinReplicas,
 	MaxReplicas: &workerMaxReplicas,
-	RayStartParams: map[string]string{
+	RayStartParams: &map[string]string{
 		"node-ip-address": "$MY_POD_IP",
 	},
 	Template: corev1.PodTemplateSpec{

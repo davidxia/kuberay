@@ -15,8 +15,8 @@ import (
 )
 
 type RayClusterSpecObject struct {
-	HeadRayStartParams     map[string]string
-	WorkerRayStartParams   map[string]string
+	HeadRayStartParams     *map[string]string
+	WorkerRayStartParams   *map[string]string
 	RayVersion             string
 	Image                  string
 	HeadCPU                string
@@ -87,33 +87,43 @@ func (rayClusterSpecObject *RayClusterSpecObject) generateRayClusterSpec() *rayv
 	headResources := generateResources(rayClusterSpecObject.HeadCPU, rayClusterSpecObject.HeadMemory, rayClusterSpecObject.HeadEphemeralStorage, rayClusterSpecObject.HeadGPU)
 	workerResources := generateResources(rayClusterSpecObject.WorkerCPU, rayClusterSpecObject.WorkerMemory, rayClusterSpecObject.WorkerEphemeralStorage, rayClusterSpecObject.WorkerGPU)
 
+	headGroupSpec := rayv1ac.HeadGroupSpec().
+		WithTemplate(corev1ac.PodTemplateSpec().
+			WithSpec(corev1ac.PodSpec().
+				WithContainers(corev1ac.Container().
+					WithName("ray-head").
+					WithImage(rayClusterSpecObject.Image).
+					WithResources(corev1ac.ResourceRequirements().
+						WithRequests(headResources).
+						WithLimits(headResources)).
+					WithPorts(corev1ac.ContainerPort().WithContainerPort(6379).WithName("gcs-server"),
+						corev1ac.ContainerPort().WithContainerPort(8265).WithName("dashboard"),
+						corev1ac.ContainerPort().WithContainerPort(10001).WithName("client")))))
+
+	if rayClusterSpecObject.HeadRayStartParams != nil {
+		headGroupSpec.WithRayStartParams(*rayClusterSpecObject.HeadRayStartParams)
+	}
+
+	workerGroupSpecs := rayv1ac.WorkerGroupSpec().
+		WithGroupName("default-group").
+		WithReplicas(rayClusterSpecObject.WorkerReplicas).
+		WithTemplate(corev1ac.PodTemplateSpec().
+			WithSpec(corev1ac.PodSpec().
+				WithContainers(corev1ac.Container().
+					WithName("ray-worker").
+					WithImage(rayClusterSpecObject.Image).
+					WithResources(corev1ac.ResourceRequirements().
+						WithRequests(workerResources).
+						WithLimits(workerResources)))))
+
+	if rayClusterSpecObject.WorkerRayStartParams != nil {
+		workerGroupSpecs.WithRayStartParams(*rayClusterSpecObject.WorkerRayStartParams)
+	}
+
 	rayClusterSpec := rayv1ac.RayClusterSpec().
 		WithRayVersion(rayClusterSpecObject.RayVersion).
-		WithHeadGroupSpec(rayv1ac.HeadGroupSpec().
-			WithRayStartParams(rayClusterSpecObject.HeadRayStartParams).
-			WithTemplate(corev1ac.PodTemplateSpec().
-				WithSpec(corev1ac.PodSpec().
-					WithContainers(corev1ac.Container().
-						WithName("ray-head").
-						WithImage(rayClusterSpecObject.Image).
-						WithResources(corev1ac.ResourceRequirements().
-							WithRequests(headResources).
-							WithLimits(headResources)).
-						WithPorts(corev1ac.ContainerPort().WithContainerPort(6379).WithName("gcs-server"),
-							corev1ac.ContainerPort().WithContainerPort(8265).WithName("dashboard"),
-							corev1ac.ContainerPort().WithContainerPort(10001).WithName("client")))))).
-		WithWorkerGroupSpecs(rayv1ac.WorkerGroupSpec().
-			WithRayStartParams(rayClusterSpecObject.WorkerRayStartParams).
-			WithGroupName("default-group").
-			WithReplicas(rayClusterSpecObject.WorkerReplicas).
-			WithTemplate(corev1ac.PodTemplateSpec().
-				WithSpec(corev1ac.PodSpec().
-					WithContainers(corev1ac.Container().
-						WithName("ray-worker").
-						WithImage(rayClusterSpecObject.Image).
-						WithResources(corev1ac.ResourceRequirements().
-							WithRequests(workerResources).
-							WithLimits(workerResources))))))
+		WithHeadGroupSpec(headGroupSpec).
+		WithWorkerGroupSpecs(workerGroupSpecs)
 
 	return rayClusterSpec
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/ray-project/kuberay/ray-operator/controllers/ray/utils"
 
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/utils/ptr"
 
 	rayv1 "github.com/ray-project/kuberay/ray-operator/apis/ray/v1"
 
@@ -48,9 +49,11 @@ var customAcceleratorToRayResourceMap = map[string]string{
 // Get the port required to connect to the Ray cluster by worker nodes and drivers
 // started within the cluster.
 // For Ray >= 1.11.0 this is the GCS server port. For Ray < 1.11.0 it is the Redis port.
-func GetHeadPort(headStartParams map[string]string) string {
-	if value, ok := headStartParams["port"]; ok {
-		return value
+func GetHeadPort(headStartParams *map[string]string) string {
+	if headStartParams != nil {
+		if value, ok := (*headStartParams)["port"]; ok {
+			return value
+		}
 	}
 	return strconv.Itoa(utils.DefaultGcsServerPort)
 }
@@ -124,7 +127,7 @@ func configureGCSFaultTolerance(podTemplate *corev1.PodTemplateSpec, instance ra
 					// If `GcsFaultToleranceOptions.RedisUsername` is set, it will be put into the
 					// `REDIS_USERNAME` environment variable later. Here, we use `$REDIS_USERNAME` in
 					// rayStartParams to refer to the environment variable.
-					instance.Spec.HeadGroupSpec.RayStartParams["redis-username"] = "$REDIS_USERNAME"
+					(*instance.Spec.HeadGroupSpec.RayStartParams)["redis-username"] = "$REDIS_USERNAME"
 					container.Env = append(container.Env, corev1.EnvVar{
 						Name:      utils.REDIS_USERNAME,
 						Value:     options.RedisUsername.Value,
@@ -135,7 +138,7 @@ func configureGCSFaultTolerance(podTemplate *corev1.PodTemplateSpec, instance ra
 					// If `GcsFaultToleranceOptions.RedisPassword` is set, it will be put into the
 					// `REDIS_PASSWORD` environment variable later. Here, we use `$REDIS_PASSWORD` in
 					// rayStartParams to refer to the environment variable.
-					instance.Spec.HeadGroupSpec.RayStartParams["redis-password"] = "$REDIS_PASSWORD"
+					(*instance.Spec.HeadGroupSpec.RayStartParams)["redis-password"] = "$REDIS_PASSWORD"
 					container.Env = append(container.Env, corev1.EnvVar{
 						Name:      utils.REDIS_PASSWORD,
 						Value:     options.RedisPassword.Value,
@@ -149,9 +152,11 @@ func configureGCSFaultTolerance(podTemplate *corev1.PodTemplateSpec, instance ra
 				if !utils.EnvVarExists(utils.REDIS_PASSWORD, container.Env) {
 					// setting the REDIS_PASSWORD env var from the params
 					redisPasswordEnv := corev1.EnvVar{Name: utils.REDIS_PASSWORD}
-					if value, ok := instance.Spec.HeadGroupSpec.RayStartParams["redis-password"]; ok {
-						redisPasswordEnv.Value = value
-						container.Env = append(container.Env, redisPasswordEnv)
+					if rayStartParams := instance.Spec.HeadGroupSpec.RayStartParams; rayStartParams != nil {
+						if value, ok := (*rayStartParams)["redis-password"]; ok {
+							redisPasswordEnv.Value = value
+							container.Env = append(container.Env, redisPasswordEnv)
+						}
 					}
 				}
 			}
@@ -174,7 +179,11 @@ func DefaultHeadPodTemplate(ctx context.Context, instance rayv1.RayCluster, head
 		podTemplate.Labels = make(map[string]string)
 	}
 	podTemplate.Labels = labelPod(rayv1.HeadNode, instance.Name, utils.RayNodeHeadGroupLabelValue, instance.Spec.HeadGroupSpec.Template.ObjectMeta.Labels)
-	headSpec.RayStartParams = setMissingRayStartParams(ctx, headSpec.RayStartParams, rayv1.HeadNode, headPort, "")
+
+	if headSpec.RayStartParams == nil {
+		headSpec.RayStartParams = &map[string]string{}
+	}
+	headSpec.RayStartParams = ptr.To(setMissingRayStartParams(ctx, *headSpec.RayStartParams, rayv1.HeadNode, headPort, ""))
 
 	initTemplateAnnotations(instance, &podTemplate)
 
@@ -182,7 +191,7 @@ func DefaultHeadPodTemplate(ctx context.Context, instance rayv1.RayCluster, head
 	if utils.IsAutoscalingEnabled(&instance.Spec) {
 		// The default autoscaler is not compatible with Kubernetes. As a result, we disable
 		// the monitor process by default and inject a KubeRay autoscaler side container into the head pod.
-		headSpec.RayStartParams["no-monitor"] = "true"
+		(*headSpec.RayStartParams)["no-monitor"] = "true"
 		// set custom service account with proper roles bound.
 		// utils.CheckName clips the name to match the behavior of reconcileAutoscalerServiceAccount
 		podTemplate.Spec.ServiceAccountName = utils.CheckName(utils.GetHeadGroupServiceAccountName(&instance))
@@ -296,7 +305,7 @@ func DefaultWorkerPodTemplate(ctx context.Context, instance rayv1.RayCluster, wo
 		podTemplate.Labels = make(map[string]string)
 	}
 	podTemplate.Labels = labelPod(rayv1.WorkerNode, instance.Name, workerSpec.GroupName, workerSpec.Template.ObjectMeta.Labels)
-	workerSpec.RayStartParams = setMissingRayStartParams(ctx, workerSpec.RayStartParams, rayv1.WorkerNode, headPort, fqdnRayIP)
+	workerSpec.RayStartParams = ptr.To(setMissingRayStartParams(ctx, *workerSpec.RayStartParams, rayv1.WorkerNode, headPort, fqdnRayIP))
 
 	initTemplateAnnotations(instance, &podTemplate)
 	configureGCSFaultTolerance(&podTemplate, instance, rayv1.WorkerNode)

@@ -1093,6 +1093,11 @@ func (r *RayClusterReconciler) buildHeadPod(ctx context.Context, instance rayv1.
 	logger := ctrl.LoggerFrom(ctx)
 	podName := utils.PodName(instance.Name, rayv1.HeadNode, false)
 	fqdnRayIP := utils.GenerateFQDNServiceName(ctx, instance, instance.Namespace) // Fully Qualified Domain Name
+
+	if instance.Spec.HeadGroupSpec.RayStartParams == nil {
+		instance.Spec.HeadGroupSpec.RayStartParams = &map[string]string{}
+	}
+
 	// The Ray head port used by workers to connect to the cluster (GCS server port for Ray >= 1.11.0, Redis port for older Ray.)
 	headPort := common.GetHeadPort(instance.Spec.HeadGroupSpec.RayStartParams)
 	autoscalingEnabled := utils.IsAutoscalingEnabled(&instance.Spec)
@@ -1102,7 +1107,7 @@ func (r *RayClusterReconciler) buildHeadPod(ctx context.Context, instance rayv1.
 	}
 	logger.Info("head pod labels", "labels", podConf.Labels)
 	creatorCRDType := getCreatorCRDType(instance)
-	pod := common.BuildPod(ctx, podConf, rayv1.HeadNode, instance.Spec.HeadGroupSpec.RayStartParams, headPort, autoscalingEnabled, creatorCRDType, fqdnRayIP)
+	pod := common.BuildPod(ctx, podConf, rayv1.HeadNode, *instance.Spec.HeadGroupSpec.RayStartParams, headPort, autoscalingEnabled, creatorCRDType, fqdnRayIP)
 	// Set raycluster instance as the owner and controller
 	if err := controllerutil.SetControllerReference(&instance, &pod, r.Scheme); err != nil {
 		logger.Error(err, "Failed to set controller reference for raycluster pod")
@@ -1121,6 +1126,10 @@ func (r *RayClusterReconciler) buildWorkerPod(ctx context.Context, instance rayv
 	podName := utils.PodName(fmt.Sprintf("%s-%s", instance.Name, worker.GroupName), rayv1.WorkerNode, true)
 	fqdnRayIP := utils.GenerateFQDNServiceName(ctx, instance, instance.Namespace) // Fully Qualified Domain Name
 
+	if worker.RayStartParams == nil {
+		worker.RayStartParams = &map[string]string{}
+	}
+
 	// The Ray head port used by workers to connect to the cluster (GCS server port for Ray >= 1.11.0, Redis port for older Ray.)
 	headPort := common.GetHeadPort(instance.Spec.HeadGroupSpec.RayStartParams)
 	autoscalingEnabled := utils.IsAutoscalingEnabled(&instance.Spec)
@@ -1129,7 +1138,7 @@ func (r *RayClusterReconciler) buildWorkerPod(ctx context.Context, instance rayv
 		podTemplateSpec.Spec.Containers = append(podTemplateSpec.Spec.Containers, r.workerSidecarContainers...)
 	}
 	creatorCRDType := getCreatorCRDType(instance)
-	pod := common.BuildPod(ctx, podTemplateSpec, rayv1.WorkerNode, worker.RayStartParams, headPort, autoscalingEnabled, creatorCRDType, fqdnRayIP)
+	pod := common.BuildPod(ctx, podTemplateSpec, rayv1.WorkerNode, *worker.RayStartParams, headPort, autoscalingEnabled, creatorCRDType, fqdnRayIP)
 	// Set raycluster instance as the owner and controller
 	if err := controllerutil.SetControllerReference(&instance, &pod, r.Scheme); err != nil {
 		logger.Error(err, "Failed to set controller reference for raycluster pod")

@@ -221,7 +221,7 @@ func convertAutoscalingOptions(opts *rayv1api.AutoscalerOptions) *api.Autoscaler
 
 func PopulateHeadNodeSpec(spec rayv1api.HeadGroupSpec) *api.HeadGroupSpec {
 	headNodeSpec := &api.HeadGroupSpec{
-		RayStartParams:  spec.RayStartParams,
+		RayStartParams:  *spec.RayStartParams,
 		ServiceType:     string(spec.ServiceType),
 		Image:           spec.Template.Annotations[util.RayClusterImageAnnotationKey],
 		ComputeTemplate: spec.Template.Annotations[util.RayClusterComputeTemplateAnnotationKey],
@@ -273,7 +273,7 @@ func PopulateWorkerNodeSpec(specs []rayv1api.WorkerGroupSpec) []*api.WorkerGroup
 
 	for _, spec := range specs {
 		workerNodeSpec := &api.WorkerGroupSpec{
-			RayStartParams:  spec.RayStartParams,
+			RayStartParams:  *spec.RayStartParams,
 			MaxReplicas:     *spec.MaxReplicas,
 			MinReplicas:     *spec.MinReplicas,
 			Replicas:        *spec.Replicas,

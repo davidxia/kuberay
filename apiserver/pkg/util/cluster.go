@@ -81,7 +81,7 @@ func buildRayClusterSpec(imageVersion string, envs *api.EnvironmentVariables, cl
 		HeadGroupSpec: rayv1api.HeadGroupSpec{
 			ServiceType:    corev1.ServiceType(clusterSpec.HeadGroupSpec.ServiceType),
 			Template:       *headPodTemplate,
-			RayStartParams: clusterSpec.HeadGroupSpec.RayStartParams,
+			RayStartParams: &clusterSpec.HeadGroupSpec.RayStartParams,
 		},
 		WorkerGroupSpecs: []rayv1api.WorkerGroupSpec{},
 	}
@@ -113,7 +113,7 @@ func buildRayClusterSpec(imageVersion string, envs *api.EnvironmentVariables, cl
 			MinReplicas:    intPointer(minReplicas),
 			MaxReplicas:    intPointer(maxReplicas),
 			Replicas:       intPointer(spec.Replicas),
-			RayStartParams: spec.RayStartParams,
+			RayStartParams: &spec.RayStartParams,
 			Template:       *workerPodTemplate,
 		}
 

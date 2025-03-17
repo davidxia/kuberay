@@ -39,7 +39,7 @@ func TestGenerateRayClusterApplyConfig(t *testing.T) {
 			HeadCPU:    "1",
 			HeadMemory: "5Gi",
 			HeadGPU:    "1",
-			HeadRayStartParams: map[string]string{
+			HeadRayStartParams: &map[string]string{
 				"dashboard-host": "1.2.3.4",
 				"num-cpus":       "0",
 			},
@@ -47,7 +47,7 @@ func TestGenerateRayClusterApplyConfig(t *testing.T) {
 			WorkerCPU:      "2",
 			WorkerMemory:   "10Gi",
 			WorkerGPU:      "1",
-			WorkerRayStartParams: map[string]string{
+			WorkerRayStartParams: &map[string]string{
 				"dagon":    "azathoth",
 				"shoggoth": "cthulhu",
 			},
@@ -126,7 +126,7 @@ func TestConvertRayClusterApplyConfigToYaml(t *testing.T) {
 			HeadCPU:    "1",
 			HeadMemory: "5Gi",
 			HeadGPU:    "1",
-			HeadRayStartParams: map[string]string{
+			HeadRayStartParams: &map[string]string{
 				"num-cpus": "0",
 			},
 			WorkerReplicas: 3,
@@ -246,19 +246,17 @@ func TestGenerateRayClusterSpec(t *testing.T) {
 		HeadMemory:           "5Gi",
 		HeadGPU:              "1",
 		HeadEphemeralStorage: "10Gi",
-		HeadRayStartParams: map[string]string{
-			"softmax": "GELU",
-		},
-		WorkerReplicas: 3,
-		WorkerCPU:      "2",
-		WorkerMemory:   "10Gi",
-		WorkerGPU:      "0",
+		HeadRayStartParams:   &map[string]string{"softmax": "GELU"},
+		WorkerReplicas:       3,
+		WorkerCPU:            "2",
+		WorkerMemory:         "10Gi",
+		WorkerGPU:            "0",
 	}
 
 	expected := &rayv1ac.RayClusterSpecApplyConfiguration{
 		RayVersion: ptr.To("1.2.3"),
 		HeadGroupSpec: &rayv1ac.HeadGroupSpecApplyConfiguration{
-			RayStartParams: map[string]string{"softmax": "GELU"},
+			RayStartParams: &map[string]string{"softmax": "GELU"},
 			Template: &corev1ac.PodTemplateSpecApplyConfiguration{
 				Spec: &corev1ac.PodSpecApplyConfiguration{
 					Containers: []corev1ac.ContainerApplyConfiguration{
