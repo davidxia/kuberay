@@ -351,7 +351,9 @@ func GetWorkerGroupDesiredReplicas(ctx context.Context, workerGroupSpec rayv1.Wo
 	} else {
 		workerReplicas = *workerGroupSpec.Replicas
 	}
-	return workerReplicas * workerGroupSpec.NumOfHosts
+	total := workerReplicas * workerGroupSpec.NumOfHosts
+	log.Info("AAAA", "workerReplicas", workerReplicas, "workerGroupSpec.NumOfHosts", workerGroupSpec.NumOfHosts, "total", total)
+	return total
 }
 
 // CalculateDesiredReplicas calculate desired worker replicas at the cluster level
