@@ -87,7 +87,7 @@ const (
 
 	// The default suffix for Headless Service for multi-host worker groups.
 	// The full name will be of the form "${RayCluster_Name}-headless".
-	HeadlessServiceSuffix = "headless"
+	HeadlessServiceSuffix = "headless-worker-svc"
 
 	// Use as container env variable
 	RAY_CLUSTER_NAME                        = "RAY_CLUSTER_NAME"

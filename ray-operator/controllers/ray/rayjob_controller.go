@@ -935,6 +935,9 @@ func checkTransitionGracePeriodAndUpdateStatusIfNeeded(ctx context.Context, rayJ
 			rayJobDeploymentGracePeriodTime = utils.DEFAULT_RAYJOB_DEPLOYMENT_STATUS_TRANSITION_GRACE_PERIOD_SECONDS
 		}
 
+		logger.Info("AAAA rayJob.Status.RayJobStatusInfo", "RayJobStatusInfo", rayJob.Status.RayJobStatusInfo)
+		logger.Info("BBBB rayJob.Status.RayJobStatusInfo.EndTime", "EndTime", rayJob.Status.RayJobStatusInfo.EndTime)
+		logger.Info("CCCC rayJobDeploymentGracePeriodTime", "rayJobDeploymentGracePeriodTime", rayJobDeploymentGracePeriodTime)
 		if time.Now().Before(rayJob.Status.RayJobStatusInfo.EndTime.Add(time.Duration(rayJobDeploymentGracePeriodTime) * time.Second)) {
 			return false
 		}
